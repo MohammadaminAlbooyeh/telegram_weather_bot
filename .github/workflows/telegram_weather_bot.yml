@@ -33,3 +33,10 @@ jobs:
         OPENWEATHER_API_KEY: "test_key"
       run: |
         python -c "import src.main; print('✅ All imports successful')"
+
+    - name: Run tests
+      env:
+        TELEGRAM_BOT_TOKEN: "test_token"
+        OPENWEATHER_API_KEY: "test_key"
+      run: |
+        pytest -q
