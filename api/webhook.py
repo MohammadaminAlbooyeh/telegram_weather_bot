@@ -4,7 +4,7 @@ from deta_webhook import _get_weather, _get_aqi, _format_message, _send_telegram
 app = FastAPI()
 
 
-@app.post("/api/webhook")
+@app.post("/")
 async def webhook(request: Request):
     update = await request.json()
     message = update.get('message') or update.get('edited_message')
