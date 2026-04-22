@@ -46,7 +46,11 @@ class WeatherBot:
 
     
     def format_weather_message(self, weather_data: dict) -> str:
-        """Format weather data into a readable message"""
+        """Format weather data into a readable message
+
+        Accepts optional `aqi_data` inside `weather_data` under key 'aqi'
+        (added by `get_aqi_by_coords` when available).
+        """
         if not weather_data:
             return "❌ Sorry, I couldn't fetch the weather data. Please try again."
         
@@ -70,6 +74,43 @@ class WeatherBot:
             message += f"💧 **Humidity:** {humidity}%\n"
             message += f"🔽 **Pressure:** {pressure} hPa\n"
             message += f"💨 **Wind Speed:** {wind_speed} m/s\n"
+
+            # Include AQI if provided
+            aqi_info = weather_data.get('aqi') if isinstance(weather_data, dict) else None
+            if aqi_info:
+                aqi_idx = aqi_info.get('aqi')
+                aqi_desc = aqi_info.get('description')
+                message += f"\n🌫️ **Air Quality (AQI):** {aqi_idx} — {aqi_desc}\n"
+                # Show pollutant concentrations when available
+                comps = aqi_info.get('components') or {}
+                def fmt(v):
+                    try:
+                        return f"{float(v):.1f}"
+                    except Exception:
+                        return "N/A"
+
+                pm25 = fmt(comps.get('pm2_5'))
+                pm10 = fmt(comps.get('pm10'))
+                no2 = fmt(comps.get('no2'))
+                o3 = fmt(comps.get('o3'))
+                co = fmt(comps.get('co'))
+                so2 = fmt(comps.get('so2'))
+
+                if any(x != "N/A" for x in (pm25, pm10, no2, o3, co, so2)):
+                    message += f"• PM2.5: {pm25} µg/m³ | PM10: {pm10} µg/m³\n"
+                    message += f"• NO₂: {no2} µg/m³ | O₃: {o3} µg/m³\n"
+
+                # Health recommendation based on AQI index
+                rec_map = {
+                    1: "Air quality is good for outdoor activities.",
+                    2: "Air quality is fair; sensitive individuals should consider reducing prolonged outdoor exertion.",
+                    3: "Air quality is moderate; people with respiratory or heart conditions should reduce prolonged outdoor exertion.",
+                    4: "Air quality is poor; consider avoiding outdoor activities.",
+                    5: "Air quality is very poor; avoid outdoor exposure if possible."
+                }
+                recommendation = rec_map.get(aqi_idx, None)
+                if recommendation:
+                    message += f"\n⚠️ Recommendation: {recommendation}\n"
             
             # Add timestamp
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -99,6 +140,43 @@ class WeatherBot:
             return "☀️"  # Clear sky
         else:
             return "☁️"  # Clouds
+
+    def get_aqi_by_coords(self, lat: float, lon: float) -> dict:
+        """Fetch AQI (air pollution) data for given coordinates using OpenWeather Air Pollution API.
+
+        Returns a dict like `{'aqi': 1, 'description': 'Good'}` or None on error.
+        """
+        try:
+            url = f"{WEATHER_BASE_URL}/air_pollution"
+            params = {
+                'lat': lat,
+                'lon': lon,
+                'appid': WEATHER_API_KEY,
+            }
+
+            resp = requests.get(url, params=params, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+
+            # Data contains a 'list' with first item having 'main': {'aqi': int}
+            if 'list' in data and len(data['list']) > 0:
+                info = data['list'][0]
+                aqi_idx = info.get('main', {}).get('aqi')
+                components = info.get('components', {})
+                # Map numeric AQI to human description (1-5)
+                aqi_map = {
+                    1: 'Good',
+                    2: 'Fair',
+                    3: 'Moderate',
+                    4: 'Poor',
+                    5: 'Very Poor'
+                }
+                return {'aqi': aqi_idx, 'description': aqi_map.get(aqi_idx, 'Unknown'), 'components': components}
+            return None
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error fetching AQI data: {e}")
+            return None
     
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
@@ -173,10 +251,20 @@ Just type a city name to get started! 🌍"""
         await update.message.reply_text(f"🔍 Getting weather for {city_name}...")
         
         weather_data = self.get_weather_by_city(city_name)
-        
+
+        # Try to fetch AQI if coordinates are available
         if weather_data and weather_data.get('cod') == 200:
+            coord = weather_data.get('coord') or {}
+            lat = coord.get('lat')
+            lon = coord.get('lon')
+            if lat is not None and lon is not None:
+                aqi_data = self.get_aqi_by_coords(lat, lon)
+                if aqi_data:
+                    # Attach AQI info to weather_data for formatting
+                    weather_data['aqi'] = aqi_data
+
             weather_message = self.format_weather_message(weather_data)
-            await update.message.reply_text(weather_message)
+            await update.message.reply_text(weather_message, parse_mode='Markdown')
         else:
             error_message = "❌ City not found. Please check the spelling and try again.\n\n"
             error_message += "**Tips:**\n"
