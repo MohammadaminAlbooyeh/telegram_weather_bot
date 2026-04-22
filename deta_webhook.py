@@ -2,6 +2,7 @@ import os
 import json
 import requests
 from datetime import datetime
+from typing import Optional
 
 # Environment variables (set as Deta secrets or in environment)
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -42,7 +43,7 @@ def _get_aqi(lat: float, lon: float):
         return None
 
 
-def _format_message(weather_data: dict, aqi_info: dict | None) -> str:
+def _format_message(weather_data: dict, aqi_info: Optional[dict]) -> str:
     try:
         city = weather_data.get('name')
         country = weather_data.get('sys', {}).get('country')
