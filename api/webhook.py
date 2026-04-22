@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Request
-from deta_webhook import _get_weather, _get_aqi, _format_message, _send_telegram
 
 app = FastAPI()
 
@@ -7,6 +6,13 @@ app = FastAPI()
 @app.post("/")
 async def webhook(request: Request):
     try:
+        # Import helpers here to catch import-time errors on each invocation
+        try:
+            from deta_webhook import _get_weather, _get_aqi, _format_message, _send_telegram
+        except Exception as ie:
+            import traceback
+            return {"ok": False, "error": "import_error", "trace": traceback.format_exc()}
+
         update = await request.json()
         message = update.get('message') or update.get('edited_message')
         if not message:
