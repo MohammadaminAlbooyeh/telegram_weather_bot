@@ -36,7 +36,7 @@ def test_format_weather_message_success_contains_fields():
     assert "📝 **Description:** Clear Sky" in message
     assert "💧 **Humidity:** 55%" in message
     assert "🔽 **Pressure:** 1012 hPa" in message
-    assert "💨 **Wind Speed:** 3.5 m/s" in message
+    assert "💨 **Wind Speed:** 3.50 m/s" in message
     assert "🕐 *Updated:" in message
 
 

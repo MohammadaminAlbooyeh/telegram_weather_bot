@@ -158,6 +158,7 @@ class WeatherBot:
             pressure = weather_data['main']['pressure']
             description = weather_data['weather'][0]['description'].title()
             wind_speed = weather_data['wind']['speed']
+            wind_speed = f"{wind_speed:.2f}"
             
             # Get weather emoji based on weather condition
             weather_id = weather_data['weather'][0]['id']
