@@ -1,12 +1,12 @@
-version: '3.8'
-
 services:
-  telegram-weather-bot:
-    build: .
+  weather-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: telegram-weather-bot
     restart: unless-stopped
-    environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
     env_file:
       - .env
+    # For 64-bit Raspberry Pi OS (recommended), keep arm64.
+    # For 32-bit Pi OS, change to: linux/arm/v7
+    platform: linux/arm64

@@ -7,7 +7,7 @@ A simple Telegram bot that provides current weather information for any city wor
 - 🌡️ **Current Weather**: Get real-time weather data for any city
 - 🌍 **Global Coverage**: Support for cities worldwide
 - 🎨 **Clean Interface**: Simple commands with emoji-rich responses
-- ⚡ **Fast & Reliable**: Powered by OpenWeatherMap API
+ - ⚡ **Fast & Reliable**: Powered by MET Norway (locationforecast) API
 
 ## 🚀 Quick Start
 
@@ -15,7 +15,8 @@ A simple Telegram bot that provides current weather information for any city wor
 
 - Python 3.8 or higher
 - Telegram Bot Token (from [@BotFather](https://t.me/botfather))
-- OpenWeatherMap API Key (from [OpenWeatherMap](https://openweathermap.org/api))
+- (Optional) MET Norway: no API key required; set `MET_USER_AGENT` if you want a custom User-Agent
+ - (Optional) MET Norway does not require an API key but requires a proper `User-Agent` header. See `api/met_no.py` for usage.
 
 ### Installation
 
@@ -38,7 +39,8 @@ A simple Telegram bot that provides current weather information for any city wor
    Edit `.env` file with your credentials:
    ```env
    TELEGRAM_BOT_TOKEN=your_bot_token_here
-   OPENWEATHER_API_KEY=your_api_key_here
+   # Optionally set MET_USER_AGENT if you want a custom User-Agent
+   # MET_USER_AGENT=myapp/1.0 (mailto:you@example.com)
    ```
 
 4. **Run the bot**
@@ -46,24 +48,40 @@ A simple Telegram bot that provides current weather information for any city wor
    python src/main.py
    ```
 
-## 🔄 CI/CD Pipeline
+## 🐳 Run With Docker On Raspberry Pi
 
-This project includes automated workflows:
+1. Put your bot token in `.env`:
 
-- **CI**: Tests code syntax and imports on every push/PR
-- **Docker Build**: Creates container images and pushes to GitHub Container Registry
-- **Deploy**: Automated deployment on version tags
+   ```env
+   TELEGRAM_BOT_TOKEN=your_bot_token_here
+   ```
 
-### Deployment
+2. Build and run:
 
-Create a new release to trigger deployment:
+   ```bash
+   docker compose up --build -d
+   ```
 
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
+3. Check logs:
 
-Or manually trigger deployment from GitHub Actions.
+   ```bash
+   docker compose logs -f
+   ```
+
+4. Stop:
+
+   ```bash
+   docker compose down
+   ```
+
+Notes:
+- `docker-compose.yml` is set to `platform: linux/arm64` for 64-bit Raspberry Pi OS.
+- If your Pi OS is 32-bit, change platform to `linux/arm/v7`.
+
+## 🚫 CI/CD
+
+CI/CD workflows and automated deployments have been removed from this repository.
+Run the bot locally using the instructions in the "Quick Start" section above.
 
 ## 🔧 Getting API Keys
 
@@ -74,12 +92,11 @@ Or manually trigger deployment from GitHub Actions.
 3. Follow the instructions to create your bot
 4. Copy the token provided by BotFather
 
-### OpenWeatherMap API Key
+### MET Norway (locationforecast)
 
-1. Visit [OpenWeatherMap](https://openweathermap.org/api)
-2. Sign up for a free account
-3. Go to API Keys section in your profile
-4. Copy your default API key
+1. MET Norway's weather API (`https://api.met.no/weatherapi`) is free to use.
+2. You MUST set a descriptive `User-Agent` header identifying your application (see `api/met_no.py`).
+3. No API key is required for `locationforecast`.
 
 ## 🤖 Bot Commands
 
@@ -128,7 +145,7 @@ telegram_weather_bot/
 
 ### APIs Used
 - **Telegram Bot API** - For bot functionality
-- **OpenWeatherMap API** - For weather data
+- **MET Norway (locationforecast)** - For weather forecast data (see `api/met_no.py`)
 
 ## 🔒 Security
 
@@ -141,7 +158,7 @@ telegram_weather_bot/
 - **"Import errors"**: Run `pip install -r requirements.txt`
 - **"Token not found"**: Check your `.env` file exists and contains valid tokens
 - **"City not found"**: Check spelling or try adding country name
-- **No weather data**: Verify your OpenWeatherMap API key is active
+ - **No weather data**: Verify your configuration and monitored coordinates in `.env` (see `MONITOR_COORDS`).
 
 ## 📈 Future Ideas
 
@@ -165,7 +182,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) - Excellent Telegram Bot framework
-- [OpenWeatherMap](https://openweathermap.org/) - Reliable weather data API
+-- [MET Norway](https://api.met.no/) - Public Norwegian weather API (locationforecast)
 - Weather emojis and icons from Unicode standard
 
 ## 📞 Support
