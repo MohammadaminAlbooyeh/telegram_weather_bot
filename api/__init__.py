@@ -1,3 +1,3 @@
 """api package for project modules (placeholder)."""
 
-__all__ = ["met_no", "scheduler"]
+__all__ = ["weatherapi_client", "scheduler"]

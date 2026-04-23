@@ -5,10 +5,10 @@ import threading
 from typing import List, Tuple
 from datetime import datetime
 
-from .met_no import get_locationforecast_compact
+from .weatherapi_client import get_current_weather_by_coords
 
 CACHE_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
-CACHE_FILE = os.path.join(CACHE_DIR, 'met_cache.json')
+CACHE_FILE = os.path.join(CACHE_DIR, 'weatherapi_cache.json')
 
 def _ensure_cache_dir():
     os.makedirs(CACHE_DIR, exist_ok=True)
@@ -54,14 +54,14 @@ def save_cache(obj: dict):
 
 
 def fetch_and_cache_all(coords: List[Tuple[float, float]]):
-    """Fetch MET data for each coord and cache it."""
+    """Fetch WeatherAPI data for each coord and cache it."""
     if not coords:
         return
     cache = load_cache()
     for lat, lon in coords:
         key = f"{lat},{lon}"
         try:
-            data = get_locationforecast_compact(lat, lon)
+            data = get_current_weather_by_coords(lat, lon)
             cache[key] = {
                 'lat': lat,
                 'lon': lon,
@@ -106,14 +106,14 @@ class SchedulerThread(threading.Thread):
 def start_background_scheduler_from_env():
     """Start scheduler using environment variables:
     - MONITOR_COORDS: semicolon-separated list of lat,lon pairs
-    - MET_FETCH_INTERVAL_MIN: minutes between fetches (default 10)
+    - WEATHER_FETCH_INTERVAL_MIN: minutes between fetches (default 10)
     """
     coords_str = os.getenv('MONITOR_COORDS', '')
     coords = parse_coords_list(coords_str)
     if not coords:
         return None
     try:
-        interval = int(os.getenv('MET_FETCH_INTERVAL_MIN', '10'))
+        interval = int(os.getenv('WEATHER_FETCH_INTERVAL_MIN', '10'))
     except Exception:
         interval = 10
 

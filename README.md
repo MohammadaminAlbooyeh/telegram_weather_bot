@@ -7,7 +7,7 @@ A simple Telegram bot that provides current weather information for any city wor
 - 🌡️ **Current Weather**: Get real-time weather data for any city
 - 🌍 **Global Coverage**: Support for cities worldwide
 - 🎨 **Clean Interface**: Simple commands with emoji-rich responses
- - ⚡ **Fast & Reliable**: Powered by MET Norway (locationforecast) API
+ - ⚡ **Fast & Reliable**: Powered by WeatherAPI
 
 ## 🚀 Quick Start
 
@@ -15,8 +15,7 @@ A simple Telegram bot that provides current weather information for any city wor
 
 - Python 3.8 or higher
 - Telegram Bot Token (from [@BotFather](https://t.me/botfather))
-- (Optional) MET Norway: no API key required; set `MET_USER_AGENT` if you want a custom User-Agent
- - (Optional) MET Norway does not require an API key but requires a proper `User-Agent` header. See `api/met_no.py` for usage.
+- WeatherAPI key (from [weatherapi.com](https://www.weatherapi.com/))
 
 ### Installation
 
@@ -39,8 +38,7 @@ A simple Telegram bot that provides current weather information for any city wor
    Edit `.env` file with your credentials:
    ```env
    TELEGRAM_BOT_TOKEN=your_bot_token_here
-   # Optionally set MET_USER_AGENT if you want a custom User-Agent
-   # MET_USER_AGENT=myapp/1.0 (mailto:you@example.com)
+   WEATHER_API_KEY=5e5f7abe65074015b7f130224251809
    ```
 
 4. **Run the bot**
@@ -92,11 +90,11 @@ Run the bot locally using the instructions in the "Quick Start" section above.
 3. Follow the instructions to create your bot
 4. Copy the token provided by BotFather
 
-### MET Norway (locationforecast)
+### WeatherAPI
 
-1. MET Norway's weather API (`https://api.met.no/weatherapi`) is free to use.
-2. You MUST set a descriptive `User-Agent` header identifying your application (see `api/met_no.py`).
-3. No API key is required for `locationforecast`.
+1. Create an account at [weatherapi.com](https://www.weatherapi.com/).
+2. Copy your API key and set `WEATHER_API_KEY` in `.env`.
+3. This project uses WeatherAPI `current.json` endpoint for weather and air quality.
 
 ## 🤖 Bot Commands
 
@@ -145,7 +143,7 @@ telegram_weather_bot/
 
 ### APIs Used
 - **Telegram Bot API** - For bot functionality
-- **MET Norway (locationforecast)** - For weather forecast data (see `api/met_no.py`)
+- **WeatherAPI** - For current weather and air quality data (see `api/weatherapi_client.py`)
 
 ## 🔒 Security
 
@@ -182,7 +180,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) - Excellent Telegram Bot framework
--- [MET Norway](https://api.met.no/) - Public Norwegian weather API (locationforecast)
+- [WeatherAPI](https://www.weatherapi.com/) - Weather and air quality data provider
 - Weather emojis and icons from Unicode standard
 
 ## 📞 Support

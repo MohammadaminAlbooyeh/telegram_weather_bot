@@ -2,7 +2,6 @@ import os
 import logging
 from datetime import datetime
 
-import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from dotenv import load_dotenv
@@ -12,7 +11,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from api import scheduler
-from api import met_no
+from api import weatherapi_client
 
 # Load environment variables
 load_dotenv()
@@ -43,162 +42,91 @@ class WeatherBot:
             'tokyo': (35.6762, 139.6503, 'Tokyo', 'JP'),
         }
 
-    def get_aqi_by_coords(self, lat: float, lon: float) -> dict:
-        """Fetch AQI and pollutant data using Open-Meteo Air Quality API (no API key)."""
-        try:
-            url = "https://air-quality-api.open-meteo.com/v1/air-quality"
-            params = {
-                "latitude": lat,
-                "longitude": lon,
-                "current": "european_aqi,pm2_5,pm10,nitrogen_dioxide,ozone,carbon_monoxide,sulphur_dioxide",
-                "timezone": "auto",
-            }
-            resp = requests.get(url, params=params, timeout=10)
-            resp.raise_for_status()
-            payload = resp.json() or {}
-
-            current = payload.get("current", {})
-            eu_aqi = current.get("european_aqi")
-            if eu_aqi is None:
-                return None
-
-            eu_aqi = float(eu_aqi)
-
-            if eu_aqi <= 20:
-                idx, desc = 1, "Good"
-            elif eu_aqi <= 40:
-                idx, desc = 2, "Fair"
-            elif eu_aqi <= 60:
-                idx, desc = 3, "Moderate"
-            elif eu_aqi <= 80:
-                idx, desc = 4, "Poor"
-            else:
-                idx, desc = 5, "Very Poor"
-
-            return {
-                "aqi": idx,
-                "description": f"{desc} (EU AQI {eu_aqi:.0f})",
-                "components": {
-                    "pm2_5": current.get("pm2_5"),
-                    "pm10": current.get("pm10"),
-                    "no2": current.get("nitrogen_dioxide"),
-                    "o3": current.get("ozone"),
-                    "co": current.get("carbon_monoxide"),
-                    "so2": current.get("sulphur_dioxide"),
-                },
-            }
-        except Exception as e:
-            logger.warning("AQI lookup failed: %s", e)
+    def get_aqi_from_weatherapi(self, air_quality: dict) -> dict:
+        """Normalize WeatherAPI air quality payload to the bot's internal AQI shape."""
+        if not isinstance(air_quality, dict):
             return None
+
+        us_epa = air_quality.get("us-epa-index")
+        if us_epa is None:
+            return None
+
+        try:
+            us_epa = int(us_epa)
+        except Exception:
+            return None
+
+        if us_epa <= 1:
+            idx, desc = 1, "Good"
+        elif us_epa == 2:
+            idx, desc = 2, "Moderate"
+        elif us_epa == 3:
+            idx, desc = 3, "Unhealthy for Sensitive Groups"
+        elif us_epa == 4:
+            idx, desc = 4, "Unhealthy"
+        else:
+            idx, desc = 5, "Very Unhealthy / Hazardous"
+
+        return {
+            "aqi": idx,
+            "description": f"{desc} (US EPA {us_epa})",
+            "components": {
+                "pm2_5": air_quality.get("pm2_5"),
+                "pm10": air_quality.get("pm10"),
+                "no2": air_quality.get("no2"),
+                "o3": air_quality.get("o3"),
+                "co": air_quality.get("co"),
+                "so2": air_quality.get("so2"),
+            },
+        }
     
     def get_weather_by_city(self, city_name: str) -> dict:
         """Get current weather data for a city"""
-        # Use Nominatim (OpenStreetMap) for simple geocoding, then fetch MET Norway data
         try:
             q = city_name.strip()
             if not q:
                 return None
 
-            normalized = q.lower().strip()
-
-            lat = lon = None
-            display_name = q
-            country_code = ''
-
-            # Geocode with Nominatim
-            nom_url = "https://nominatim.openstreetmap.org/search"
-            params = {
-                "q": q,
-                "format": "json",
-                "limit": 1,
-                "addressdetails": 1,
-            }
-            # Use MET_USER_AGENT if provided; include mailto per Nominatim policy
-            met_ua = os.getenv('MET_USER_AGENT') or 'telegram_weather_bot/1.0 (mailto:youremail@example.com)'
-            headers = {"User-Agent": met_ua, "Accept-Language": "en"}
-
-            try:
-                r = requests.get(nom_url, params=params, headers=headers, timeout=10)
-                r.raise_for_status()
-                results = r.json() or []
-                if results:
-                    loc = results[0]
-                    lat = float(loc.get('lat'))
-                    lon = float(loc.get('lon'))
-                    display_name = loc.get('display_name', city_name)
-                    country_code = (loc.get('address', {}) or {}).get('country_code', '').upper()
-            except requests.RequestException as geocode_err:
-                logger.warning("Nominatim geocoding failed (%s), trying fallback mapping", geocode_err)
-
-            # Fallback mapping for popular cities when geocoding fails
-            if lat is None or lon is None:
-                fallback = self.city_fallback.get(normalized)
-                if not fallback:
-                    return None
-                lat, lon, display_name, country_code = fallback
-
-            # Fetch MET timeseries
-            timeseries = met_no.get_all_timeseries(lat, lon)
-            if not timeseries:
+            payload = weatherapi_client.get_current_weather(q)
+            if not payload:
                 return None
 
-            # Choose the first available timeseries entry
-            entry = timeseries[0]
-            data = entry.get('data', {})
-            instant = data.get('instant', {}).get('details', {})
+            location = payload.get("location", {})
+            current = payload.get("current", {})
+            condition = current.get("condition", {})
 
-            temp = instant.get('air_temperature')
-            humidity = instant.get('relative_humidity') or instant.get('humidity')
-            pressure = instant.get('air_pressure_at_sea_level') or instant.get('pressure')
-            wind_speed = instant.get('wind_speed') or instant.get('wind_speed_of_gust') or 0.0
-
-            # Try to get a summary / symbol from next_1_hours or next_6_hours
-            symbol = None
-            summary = None
-            for key in ('next_1_hours', 'next_6_hours', 'next_12_hours'):
-                seg = data.get(key)
-                if seg and isinstance(seg, dict):
-                    summary = seg.get('summary', {})
-                    symbol = summary.get('symbol_code')
-                    if symbol:
-                        break
-
-            def symbol_to_id(sym: str) -> int:
-                if not sym:
-                    return 800
-                s = sym.lower()
-                if 'thunder' in s or 'lightning' in s:
-                    return 200
-                if 'snow' in s or 'sleet' in s:
-                    return 600
-                if 'rain' in s or 'drizzle' in s or 'shower' in s:
-                    return 500
-                if 'fog' in s or 'mist' in s or 'cloud' not in s and 'clear' not in s and ('cloud' in s):
-                    return 700
-                if 'clear' in s:
-                    return 800
-                if 'cloud' in s or 'overcast' in s:
-                    return 801
-                return 800
-
-            weather_id = symbol_to_id(symbol)
-            description = symbol.replace('_', ' ').title() if symbol else 'Weather'
+            desc_lower = str(condition.get("text") or "").lower()
+            if "thunder" in desc_lower:
+                weather_id = 200
+            elif any(k in desc_lower for k in ("snow", "sleet", "blizzard", "ice")):
+                weather_id = 600
+            elif any(k in desc_lower for k in ("rain", "drizzle", "shower")):
+                weather_id = 500
+            elif any(k in desc_lower for k in ("fog", "mist", "haze", "smoke", "dust", "sand")):
+                weather_id = 700
+            elif any(k in desc_lower for k in ("cloud", "overcast", "partly cloudy")):
+                weather_id = 801
+            elif any(k in desc_lower for k in ("sunny", "clear")):
+                weather_id = 800
+            else:
+                weather_id = 800
+            description = condition.get("text") or "Weather"
 
             # Build OpenWeather-like dict expected by format_weather_message
             weather_data = {
-                'name': display_name.split(',')[0],
-                'sys': {'country': country_code},
+                'name': location.get('name') or city_name,
+                'sys': {'country': location.get('country') or ''},
                 'main': {
-                    'temp': temp if temp is not None else 0.0,
-                    'feels_like': temp if temp is not None else 0.0,
-                    'humidity': int(humidity) if humidity is not None else None,
-                    'pressure': int(pressure) if pressure is not None else None,
+                    'temp': current.get('temp_c', 0.0),
+                    'feels_like': current.get('feelslike_c', current.get('temp_c', 0.0)),
+                    'humidity': current.get('humidity'),
+                    'pressure': current.get('pressure_mb'),
                 },
                 'weather': [{'description': description, 'id': weather_id}],
-                'wind': {'speed': float(wind_speed) if wind_speed is not None else 0.0}
+                'wind': {'speed': current.get('wind_kph', 0.0) / 3.6}
             }
 
-            aqi_info = self.get_aqi_by_coords(lat, lon)
+            aqi_info = self.get_aqi_from_weatherapi(current.get('air_quality'))
             if aqi_info:
                 weather_data['aqi'] = aqi_info
 
@@ -411,17 +339,17 @@ Just type a city name to get started! 🌍"""
             logger.error("TELEGRAM_BOT_TOKEN not found in environment variables")
             return
         
-        # Note: OpenWeather removed; MET Norway is used via `api/met_no.py` and scheduler
+        # Weather data is provided via WeatherAPI (`api/weatherapi_client.py`).
         
         # Create application
         self.application = Application.builder().token(BOT_TOKEN).build()
-        # Start background MET scheduler (if MONITOR_COORDS is configured)
+        # Start background scheduler (if MONITOR_COORDS is configured)
         try:
             thr = scheduler.start_background_scheduler_from_env()
             if thr:
-                logger.info("Started MET scheduler thread for periodic fetches")
+                logger.info("Started weather scheduler thread for periodic fetches")
         except Exception:
-            logger.exception("Failed to start MET scheduler")
+            logger.exception("Failed to start weather scheduler")
         
         # Add handlers
         self.application.add_handler(CommandHandler("start", self.start_command))
