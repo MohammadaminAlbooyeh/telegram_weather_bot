@@ -127,9 +127,14 @@ Run the bot locally using the instructions in the "Quick Start" section above.
 
 ```
 telegram_weather_bot/
-├── src/
-│   └── main.py          # Main bot implementation
+├── main.py              # Main bot entrypoint
+├── config.py            # Environment and path configuration
+├── handlers/            # Telegram command/message handlers
+├── services/            # Weather data and formatting logic
+├── utils/               # Logging and validation helpers
+├── data/                # Local city lookup data and cache file
 ├── requirements.txt      # Python dependencies
+├── .env                 # Local environment variables
 ├── .env.example         # Environment variables template
 └── README.md           # This file
 ```
@@ -140,6 +145,8 @@ telegram_weather_bot/
 - `python-telegram-bot` - Telegram Bot API wrapper
 - `requests` - HTTP requests for weather API
 - `python-dotenv` - Environment variable management
+- `aiohttp` - Available for async HTTP workflows if you expand the bot later
+- `pytz` - Timezone helpers for future weather/time features
 
 ### APIs Used
 - **Telegram Bot API** - For bot functionality

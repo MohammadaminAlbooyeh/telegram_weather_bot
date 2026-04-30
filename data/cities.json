@@ -1,0 +1,14 @@
+{
+  "cities": [
+    { "key": "turin", "name": "Turin", "country": "IT", "lat": 45.0703, "lon": 7.6869 },
+    { "key": "torino", "name": "Turin", "country": "IT", "lat": 45.0703, "lon": 7.6869 },
+    { "key": "milan", "name": "Milan", "country": "IT", "lat": 45.4642, "lon": 9.19 },
+    { "key": "rome", "name": "Rome", "country": "IT", "lat": 41.9028, "lon": 12.4964 },
+    { "key": "paris", "name": "Paris", "country": "FR", "lat": 48.8566, "lon": 2.3522 },
+    { "key": "london", "name": "London", "country": "GB", "lat": 51.5072, "lon": -0.1276 },
+    { "key": "berlin", "name": "Berlin", "country": "DE", "lat": 52.52, "lon": 13.405 },
+    { "key": "madrid", "name": "Madrid", "country": "ES", "lat": 40.4168, "lon": -3.7038 },
+    { "key": "new york", "name": "New York", "country": "US", "lat": 40.7128, "lon": -74.006 },
+    { "key": "tokyo", "name": "Tokyo", "country": "JP", "lat": 35.6762, "lon": 139.6503 }
+  ]
+}

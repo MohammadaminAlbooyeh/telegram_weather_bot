@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch
 
-from src.main import WeatherBot
+from main import WeatherBot
 
 
 def sample_weather_data():
@@ -69,7 +69,7 @@ def test_get_weather_by_city_success(monkeypatch):
         },
     }
 
-    with patch('src.main.weatherapi_client.get_current_weather', return_value=fake_json) as mock_get:
+    with patch('services.weather_service.weatherapi_client.get_current_weather', return_value=fake_json) as mock_get:
         result = bot.get_weather_by_city('X')
         mock_get.assert_called_once()
         assert result["name"] == "X"
@@ -82,6 +82,6 @@ def test_get_weather_by_city_success(monkeypatch):
 def test_get_weather_by_city_request_exception(monkeypatch):
     bot = WeatherBot()
 
-    with patch('src.main.weatherapi_client.get_current_weather', side_effect=Exception("err")):
+    with patch('services.weather_service.weatherapi_client.get_current_weather', side_effect=Exception("err")):
         result = bot.get_weather_by_city('Nowhere')
         assert result is None

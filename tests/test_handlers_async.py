@@ -1,7 +1,7 @@
 import pytest
 from types import SimpleNamespace
 
-from src.main import WeatherBot
+from main import WeatherBot
 
 
 def sample_weather_data():
